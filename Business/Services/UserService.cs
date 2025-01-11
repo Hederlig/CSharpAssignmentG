@@ -1,32 +1,38 @@
-﻿using System.Diagnostics;
+﻿
+using System.Text.Json;
+using Business.Dtos;
 using Business.Factories;
-using Business.Helpers;
+using Business.Interfaces;
 using Business.Models;
+
 namespace Business.Services;
 
-public class UserService
+public class UserService(IFileService fileService) : IUserService
 {
-    private readonly List<UserEntity> _users = [];
-    public bool Create(UserRegistrationForm form)
-    {
-        try
-        {
-            UserEntity userEntity = UserFactory.Create(form);
-            userEntity.Id = UniqueIdGenerator.GenerateUniqueId();
-
-            _users.Add(userEntity);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine(ex.Message);
-            return false;
-        }
-    }
-
+    public readonly IFileService _fileService = fileService;
+    public List<User> _users = [];
     public IEnumerable<User> GetAll()
     {
-            return _users.Select(UserFactory.Create);    
+        var content = _fileService.GetContentFromFile();
+        try
+        {
+            _users = JsonSerializer.Deserialize<List<User>>(content)!;
+        }
+        catch 
+        { 
+            _users = [];
+        }
+        return _users;
+    }
+    public bool Save(UserRegistrationForm form)
+    {
+        var user = UserFactory.Create(form);
+        _users.Add(user);
+
+        var json = JsonSerializer.Serialize(_users);
+        var result = _fileService.SaveContentToFile(json);
+        return result; 
+
     }
 
 }
